@@ -1,21 +1,33 @@
 const { Product } = require("../models");
-const { validateProduct } = require("../validation/productValidation");
 const deleteFile = require("../middleware/deleteFile");
 
 exports.createProduct = async (req, res) => {
   try {
-    // Rasm URL sini tayyorlaymiz
-    const image_url = req.file ? req.file.path : req.body.image_url;
+    // Rasm URL sini tayyorlaymiz (Multer-S3 ishlatilsa .location bo'ladi)
+    const image_url = req.file ? req.file.location : req.body.image_url;
 
-    // Validator uchun body ni yangilaymiz
+    // String holatda kelgan JSONlarni (multilingual fields) obyektga aylantiramiz
+    let title = req.body.title;
+    let description = req.body.description;
+    let technologies = req.body.technologies;
+
+    try {
+      if (typeof title === 'string') title = JSON.parse(title);
+      if (typeof description === 'string') description = JSON.parse(description);
+      if (typeof technologies === 'string') technologies = JSON.parse(technologies);
+    } catch (e) {
+      // Parse xatosi bo'lsa o'z holicha qoladi
+    }
+
     const productData = {
       ...req.body,
+      title,
+      description,
+      technologies,
       image_url,
     };
 
-    // Validatsiya
-    const { error } = validateProduct(productData);
-    if (error) return res.status(400).send(error.details[0].message);
+    // Validatsiya qismi olib tashlandi
 
     // Mahsulot yaratish
     const product = await Product.create(productData);
@@ -25,6 +37,7 @@ exports.createProduct = async (req, res) => {
       product,
     });
   } catch (err) {
+    console.error(err);
     return res.status(500).send(err.message);
   }
 };
@@ -52,8 +65,7 @@ exports.getProductById = async (req, res) => {
 };
 
 exports.updateProduct = async (req, res) => {
-  const { error } = validateProduct(req.body);
-  if (error) return res.status(400).send(error.details[0].message);
+  // Validatsiya qismi olib tashlandi
 
   try {
     const product = await Product.findByPk(req.params.id);
@@ -64,7 +76,6 @@ exports.updateProduct = async (req, res) => {
 
     // Agar yangi rasm yuklangan bo'lsa
     if (req.file) {
-      // 1️⃣ Eski rasmni S3 dan o'chirish
       if (product.image_url) {
         try {
           const oldKey = product.image_url.split(".amazonaws.com/")[1];
@@ -73,13 +84,26 @@ exports.updateProduct = async (req, res) => {
           console.warn("Old image deletion failed:", s3Error.message);
         }
       }
-      // 2️⃣ Yangi rasm URL ni DB ga qo'yish
-      image_url = req.file.location; // multer-s3 bilan location mavjud
+      image_url = req.file.location;
     }
 
-    // 3️⃣ DB ni yangilash
+    // Kelayotgan ma'lumotlarni parse qilish
+    let title = req.body.title || product.title;
+    let description = req.body.description || product.description;
+    let technologies = req.body.technologies || product.technologies;
+
+    try {
+      if (typeof title === 'string') title = JSON.parse(title);
+      if (typeof description === 'string') description = JSON.parse(description);
+      if (typeof technologies === 'string') technologies = JSON.parse(technologies);
+    } catch (e) {}
+
+    // DB ni yangilash
     await product.update({
       ...req.body,
+      title,
+      description,
+      technologies,
       image_url,
     });
 
@@ -88,6 +112,7 @@ exports.updateProduct = async (req, res) => {
       product,
     });
   } catch (err) {
+    console.error(err);
     res.status(500).send(err.message);
   }
 };

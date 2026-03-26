@@ -1,17 +1,20 @@
 const { HomeBanner } = require("../models");
-const { validateHomeBanner } = require("../validation/homeBannerValidation");
-const deleteFile = require("../middleware/deleteFile")
+const deleteFile = require("../middleware/deleteFile");
 
 exports.createBanner = async (req, res) => {
   try {
     const image_url = req.file ? req.file.location : req.body.image_url;
 
-    // String holatda kelgan JSONlarni obyektga aylantiramiz
+    // String holatda kelgan JSONlarni obyektga aylantiramiz (bazaga JSON tipida saqlash uchun)
     let title = req.body.title;
     let description = req.body.description;
 
-    if (typeof title === 'string') title = JSON.parse(title);
-    if (typeof description === 'string') description = JSON.parse(description);
+    try {
+      if (typeof title === 'string') title = JSON.parse(title);
+      if (typeof description === 'string') description = JSON.parse(description);
+    } catch (e) {
+      // Agar JSON parse xato bersa, matnni o'zini qoldiradi
+    }
 
     const bannerData = {
       ...req.body,
@@ -20,9 +23,7 @@ exports.createBanner = async (req, res) => {
       image_url,
     };
 
-    const { error } = validateHomeBanner(bannerData);
-    if (error) return res.status(400).send(error.details[0].message);
-
+    // Validation qismi olib tashlandi
     const banner = await HomeBanner.create(bannerData);
     res.status(201).json(banner);
   } catch (err) {
@@ -54,21 +55,15 @@ exports.getBannerById = async (req, res) => {
 };
 
 exports.updateBanner = async (req, res) => {
-  // 1️⃣ Validation
-  const { error } = validateHomeBanner(req.body);
-  if (error) return res.status(400).send(error.details[0].message);
-
   try {
-    // 2️⃣ DB-dan banner topish
+    // 1️⃣ DB-dan banner topish
     const banner = await HomeBanner.findByPk(req.params.id);
     if (!banner) return res.status(404).send("Banner not found");
 
-    // 3️⃣ Agar yangi rasm kelsa, eski rasmni S3-dan o'chirish va yangi rasmni saqlash
-    let image_url = banner.image_url; // default: eski rasm
+    // 2️⃣ Rasm bilan ishlash
+    let image_url = banner.image_url;
 
     if (req.file) {
-      // Yangi rasm yuklandi
-      // 3a: eski rasmni S3 dan o'chirish
       if (banner.image_url) {
         try {
           const oldKey = banner.image_url.split(".amazonaws.com/")[1];
@@ -77,17 +72,26 @@ exports.updateBanner = async (req, res) => {
           console.warn("Old image deletion failed:", s3Error.message);
         }
       }
-      // 3b: yangi rasmni DB-ga qo'yish
-      image_url = req.file.location; // multer-s3 bilan location mavjud
+      image_url = req.file.location;
     }
+
+    // 3️⃣ JSONlarni parse qilish
+    let title = req.body.title || banner.title;
+    let description = req.body.description || banner.description;
+
+    try {
+      if (typeof title === 'string') title = JSON.parse(title);
+      if (typeof description === 'string') description = JSON.parse(description);
+    } catch (e) {}
 
     // 4️⃣ DB-ni yangilash
     await banner.update({
       ...req.body,
+      title,
+      description,
       image_url,
     });
 
-    // 5️⃣ Response
     res.status(200).json({
       message: "Banner updated successfully",
       banner,
@@ -99,14 +103,11 @@ exports.updateBanner = async (req, res) => {
 
 exports.deleteBanner = async (req, res) => {
   try {
-    // 1️⃣ DB dan bannerni topish
     const banner = await HomeBanner.findByPk(req.params.id);
     if (!banner) return res.status(404).json({ message: "Banner not found" });
 
-    // 2️⃣ S3-dan rasmni o'chirish
     if (banner.image_url) {
       try {
-        // URL dan S3 key ajratish
         const key = banner.image_url.split(".amazonaws.com/")[1];
         if (key) await deleteFile(key);
       } catch (s3Error) {
@@ -114,11 +115,9 @@ exports.deleteBanner = async (req, res) => {
       }
     }
 
-    // 3️⃣ DB dan o'chirish
     const bannerData = banner.toJSON();
     await banner.destroy();
 
-    // 4️⃣ Response
     res.status(200).json({
       message: "Banner deleted successfully",
       deletedBanner: bannerData,

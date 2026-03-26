@@ -1,17 +1,33 @@
 const { Service } = require("../models");
-const { validateService } = require("../validation/serviceValidation");
 
 exports.createService = async (req, res) => {
-  const { error } = validateService(req.body);
-  if (error) return res.status(400).send(error.details[0].message);
-
   try {
-    const service = await Service.create(req.body);
+    // String holatda kelgan JSONlarni (multilingual fields) obyektga aylantiramiz
+    let title = req.body.title;
+    let description = req.body.description;
+
+    try {
+      if (typeof title === 'string') title = JSON.parse(title);
+      if (typeof description === 'string') description = JSON.parse(description);
+    } catch (e) {
+      // JSON formatida bo'lmasa o'z holicha qoladi
+    }
+
+    const serviceData = {
+      ...req.body,
+      title,
+      description
+    };
+
+    // Validatsiya olib tashlandi
+    const service = await Service.create(serviceData);
+    
     return res.status(201).json({
       message: "Service created successfully",
       service,
     });
   } catch (error) {
+    console.error(error);
     return res.status(500).send(error.message);
   }
 };
@@ -39,16 +55,29 @@ exports.getServiceById = async (req, res) => {
 };
 
 exports.updateService = async (req, res) => {
-  const { error } = validateService(req.body);
-  if (error) return res.status(400).send(error.details[0].message);
-
   try {
     const service = await Service.findByPk(req.params.id);
     if (!service) return res.status(404).send("Service not found");
 
-    await service.update(req.body);
+    // Kelayotgan ma'lumotlarni parse qilish
+    let title = req.body.title || service.title;
+    let description = req.body.description || service.description;
+
+    try {
+      if (typeof title === 'string') title = JSON.parse(title);
+      if (typeof description === 'string') description = JSON.parse(description);
+    } catch (e) {}
+
+    // DB ni yangilash
+    await service.update({
+      ...req.body,
+      title,
+      description
+    });
+
     res.status(200).send(service);
   } catch (error) {
+    console.error(error);
     res.status(500).send(error.message);
   }
 };

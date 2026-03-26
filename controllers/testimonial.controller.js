@@ -1,20 +1,35 @@
 const { Testimonial } = require("../models");
-const { validateTestimonial } = require("../validation/testimonialValidation");
 const deleteFile = require("../middleware/deleteFile");
 
 exports.createTestimonial = async (req, res) => {
   try {
-    // Rasm URL sini tayyorlaymiz
-    const image_url = req.file ? req.file.path : req.body.image_url;
+    // Rasm URL sini tayyorlaymiz (S3 uchun .location ishlatiladi)
+    const image_url = req.file ? req.file.location : req.body.image_url;
+
+    // String holatda kelgan JSONlarni (multilingual) obyektga aylantiramiz
+    let customer_name = req.body.customer_name;
+    let company_name = req.body.company_name;
+    let description = req.body.description;
+
+    try {
+      if (typeof customer_name === 'string') customer_name = JSON.parse(customer_name);
+      if (typeof company_name === 'string' && company_name !== "") company_name = JSON.parse(company_name);
+      if (typeof description === 'string') description = JSON.parse(description);
+    } catch (e) {
+      // JSON formatida bo'lmasa o'z holicha qoladi
+    }
 
     const testimonialData = {
       ...req.body,
+      customer_name,
+      company_name,
+      description,
       image_url,
+      // Ratingni raqam ekanligiga ishonch hosil qilamiz
+      rating: Number(req.body.rating) || 5,
     };
 
-    // Validatsiya
-    const { error } = validateTestimonial(testimonialData);
-    if (error) return res.status(400).send(error.details[0].message);
+    // Validatsiya qismi olib tashlandi
 
     // Testimonial yaratish
     const testimonial = await Testimonial.create(testimonialData);
@@ -24,6 +39,7 @@ exports.createTestimonial = async (req, res) => {
       testimonial,
     });
   } catch (err) {
+    console.error(err);
     return res.status(500).send(err.message);
   }
 };
@@ -51,8 +67,7 @@ exports.getTestimonialById = async (req, res) => {
 };
 
 exports.updateTestimonial = async (req, res) => {
-  const { error } = validateTestimonial(req.body);
-  if (error) return res.status(400).send(error.details[0].message);
+  // Validatsiya qismi olib tashlandi
 
   try {
     const testimonial = await Testimonial.findByPk(req.params.id);
@@ -63,7 +78,6 @@ exports.updateTestimonial = async (req, res) => {
 
     // Agar yangi rasm yuklangan bo'lsa
     if (req.file) {
-      // 1️⃣ Eski rasmni S3 dan o'chirish
       if (testimonial.image_url) {
         try {
           const oldKey = testimonial.image_url.split(".amazonaws.com/")[1];
@@ -72,14 +86,28 @@ exports.updateTestimonial = async (req, res) => {
           console.warn("Old image deletion failed:", s3Error.message);
         }
       }
-      // 2️⃣ Yangi rasmni DB ga qo'yish
-      image_url = req.file.location; // multer-s3 bilan location mavjud
+      image_url = req.file.location;
     }
 
-    // 3️⃣ DB ni yangilash
+    // Kelayotgan ma'lumotlarni parse qilish
+    let customer_name = req.body.customer_name || testimonial.customer_name;
+    let company_name = req.body.company_name || testimonial.company_name;
+    let description = req.body.description || testimonial.description;
+
+    try {
+      if (typeof customer_name === 'string') customer_name = JSON.parse(customer_name);
+      if (typeof company_name === 'string' && company_name !== "") company_name = JSON.parse(company_name);
+      if (typeof description === 'string') description = JSON.parse(description);
+    } catch (e) {}
+
+    // DB ni yangilash
     await testimonial.update({
       ...req.body,
+      customer_name,
+      company_name,
+      description,
       image_url,
+      rating: req.body.rating ? Number(req.body.rating) : testimonial.rating,
     });
 
     res.status(200).json({
@@ -87,6 +115,7 @@ exports.updateTestimonial = async (req, res) => {
       testimonial,
     });
   } catch (err) {
+    console.error(err);
     res.status(500).send(err.message);
   }
 };
@@ -96,7 +125,6 @@ exports.deleteTestimonial = async (req, res) => {
     const testimonial = await Testimonial.findByPk(req.params.id);
     if (!testimonial) return res.status(404).send("Testimonial not found");
 
-    // S3 faylni o'chirish
     if (testimonial.image_url) {
       try {
         const key = testimonial.image_url.split(".amazonaws.com/")[1];

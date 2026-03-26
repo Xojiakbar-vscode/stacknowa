@@ -16,7 +16,7 @@ const app = express();
 const PORT = process.env.PORT;
 
 app.use(express.json());
-app.use(cors({ origin: "*" }));
+app.use(cors());
 
 app.use("/homeBanner", homeBanner);
 app.use("/product", product);

@@ -6,12 +6,18 @@ module.exports = (sequelize, DataTypes) => {
       primaryKey: true,
     },
     title: {
-      type: DataTypes.STRING,
+      type: DataTypes.JSON, // Uch til: { uz, en, ru }
       allowNull: false,
+      validate: {
+        notEmpty: true,
+      },
     },
     description: {
-      type: DataTypes.TEXT,
+      type: DataTypes.JSON, // Uch til: { uz, en, ru }
       allowNull: false,
+      validate: {
+        notEmpty: true,
+      },
     },
     image_url: {
       type: DataTypes.STRING,

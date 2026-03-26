@@ -14,8 +14,11 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
     },
     description: {
-      type: DataTypes.TEXT,
+      type: DataTypes.JSON, // Uch til: { uz, en, ru }
       allowNull: false,
+      validate: {
+        notEmpty: true,
+      },
     },
     rating: {
       type: DataTypes.INTEGER,

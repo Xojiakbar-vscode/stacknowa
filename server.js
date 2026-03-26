@@ -16,18 +16,12 @@ const app = express();
 const PORT = process.env.PORT;
 
 app.use(express.json());
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:5175',
-  'http://localhost:5176',
-  'https://stacknowa.uz',
-  'https://admin.stacknowa.uz'
-];
+
 
 app.use(cors({
-  origin: allowedOrigins,
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  origin: '*', 
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use("/homeBanner", homeBanner);

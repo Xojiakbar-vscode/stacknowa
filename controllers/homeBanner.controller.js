@@ -4,28 +4,30 @@ const deleteFile = require("../middleware/deleteFile")
 
 exports.createBanner = async (req, res) => {
   try {
-    // rasm URL sini tayyorlaymiz
     const image_url = req.file ? req.file.location : req.body.image_url;
 
-    // Validator uchun body ni yangilaymiz
+    // String holatda kelgan JSONlarni obyektga aylantiramiz
+    let title = req.body.title;
+    let description = req.body.description;
+
+    if (typeof title === 'string') title = JSON.parse(title);
+    if (typeof description === 'string') description = JSON.parse(description);
+
     const bannerData = {
       ...req.body,
+      title,
+      description,
       image_url,
     };
 
-    // Validatsiya
     const { error } = validateHomeBanner(bannerData);
     if (error) return res.status(400).send(error.details[0].message);
 
-    // Banner yaratish
     const banner = await HomeBanner.create(bannerData);
-
-    return res.status(201).json({
-      message: "Banner created successfully",
-      banner,
-    });
+    res.status(201).json(banner);
   } catch (err) {
-    return res.status(500).send(err.message);
+    console.error(err);
+    res.status(500).send("Server ichki xatosi: " + err.message);
   }
 };
 

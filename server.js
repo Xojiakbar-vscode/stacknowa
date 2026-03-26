@@ -16,7 +16,19 @@ const app = express();
 const PORT = process.env.PORT;
 
 app.use(express.json());
-app.use(cors());
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175',
+  'http://localhost:5176',
+  'https://stacknowa.uz',
+  'https://admin.stacknowa.uz'
+];
+
+app.use(cors({
+  origin: allowedOrigins,
+  methods: ["GET", "POST", "PUT", "DELETE"],
+}));
 
 app.use("/homeBanner", homeBanner);
 app.use("/product", product);

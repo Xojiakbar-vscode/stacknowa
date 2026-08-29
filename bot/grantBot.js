@@ -195,6 +195,25 @@ const initGrantBot = () => {
 
     const exam = await getExamConfig();
 
+    const usernameStr = ctx.from.username ? `@${ctx.from.username}` : `ID: ${userId}`;
+    const userFullName = `${ctx.from.first_name || ""} ${ctx.from.last_name || ""}`.trim() || "Foydalanuvchi";
+
+    // Notify admins whenever a new user starts the bot
+    try {
+      const startBotMsg =
+        `🔔 **Yangi foydalanuvchi Grant Botiga kirdi (/start)!** 🎓\n\n` +
+        `👤 **Foydalanuvchi:** ${userFullName}\n` +
+        `✈️ **Telegram:** ${usernameStr}\n` +
+        `🆔 **Telegram ID:** ${userId}\n` +
+        `⏱ **Vaqt:** ${new Date().toLocaleString("uz-UZ", { timeZone: "Asia/Tashkent" })}`;
+
+      sendGrantNotification(startBotMsg).catch((err) =>
+        console.error("Grant bot start command notification error:", err.message)
+      );
+    } catch (e) {
+      console.error("Start command notification trigger error:", e.message);
+    }
+
     const welcomeMsg =
       `🎓 **${exam ? exam.title : "Stacknowa Academy Grant Imtihoni"}**\n\n` +
       `📌 **Oflayn Imtihon Ma'lumotlari:**\n` +
@@ -216,6 +235,25 @@ const initGrantBot = () => {
   bot.action("START_GRANT_TEST", async (ctx) => {
     const userId = ctx.from.id;
     await safeAnswerCb(ctx);
+
+    // Check if user has already completed the test by Telegram ID
+    try {
+      const existingParticipant = await GrantParticipant.findOne({
+        where: { telegramId: userId, status: "completed" },
+      });
+
+      if (existingParticipant) {
+        return ctx.replyWithMarkdown(
+          `⚠️ **Siz allaqachon imtihon topshirgansiz!**\n\n` +
+          `📊 **Sizning natijangiz:** ${existingParticipant.score}% ball\n` +
+          `👤 **Ism:** ${existingParticipant.fullName}\n` +
+          `📱 **Telefon:** ${existingParticipant.phone}\n\n` +
+          `Har bir ishtirokchi va telegram akkaunt faqat 1 marta imtihon topshirishi mumkin.`
+        );
+      }
+    } catch (e) {
+      console.error("Check existing participant error:", e.message);
+    }
 
     const session = getSession(userId);
     session.step = "ENTER_NAME";
@@ -266,6 +304,30 @@ const initGrantBot = () => {
   // Helper: Start Quiz Questions
   const startQuizQuestions = async (ctx, userId, session) => {
     try {
+      const phone = session.phone || "Kiritilmadi";
+
+      // Check if this phone number or telegram ID has already completed test
+      try {
+        const existingParticipant = await GrantParticipant.findOne({
+          where: {
+            status: "completed",
+            phone: phone,
+          },
+        });
+
+        if (existingParticipant) {
+          clearSession(userId);
+          return ctx.replyWithMarkdown(
+            `⚠️ **Bu telefon raqam (${phone}) bilan allaqachon imtihon topshirilgan!**\n\n` +
+            `📊 **Natija:** ${existingParticipant.score}% ball\n` +
+            `👤 **Ism:** ${existingParticipant.fullName}\n\n` +
+            `Har bir telefon raqam bilan faqat 1 marta imtihon topshirish mumkin.`
+          );
+        }
+      } catch (e) {
+        console.error("Phone duplicate check error:", e.message);
+      }
+
       let questions = await GrantQuestion.findAll({ order: [["orderIndex", "ASC"]] });
       if (!questions || questions.length === 0) {
         return ctx.reply("⚠️ Imtihon savollari topilmadi. Keyinroq qayta urinib ko'ring.");
@@ -278,7 +340,6 @@ const initGrantBot = () => {
 
       const usernameStr = ctx.from.username ? `@${ctx.from.username}` : `ID: ${userId}`;
       const fullName = session.fullName || ctx.from.first_name || "Ismsiz";
-      const phone = session.phone || "Kiritilmadi";
 
       // 1. Save Lead entry in database for Lead Admins CRM
       try {
@@ -488,7 +549,7 @@ const initGrantBot = () => {
       try {
         if (passed) {
           const successAdminMsg =
-            `🏆 **GRANT IMTIHONIDAN MUVAFFAQIYATLI O'TDI!** 🎉\n\n` +
+            `🏆 **GRANT IMTIHONIDAN MUVAFFAQIYATLI O'TDI! (70%+ Ball)** 🎉\n\n` +
             `👤 **Ism:** ${fullName}\n` +
             `📱 **Telefon:** ${phone}\n` +
             `✈️ **Telegram:** ${usernameStr}\n` +
@@ -497,9 +558,7 @@ const initGrantBot = () => {
             `🤖 **Bot:** Grant Bot (@stacknowa_academy_grand_bot)\n` +
             `⏱ **Vaqt:** ${new Date().toLocaleString("uz-UZ", { timeZone: "Asia/Tashkent" })}`;
 
-          sendGrantNotification(successAdminMsg).catch((err) =>
-            console.error("Grant bot success admin notification error:", err.message)
-          );
+          await sendGrantNotification(successAdminMsg);
         } else {
           const failAdminMsg =
             `📊 **Grant Imtihon Natijasi (O'ta olmadi)**\n\n` +
@@ -511,9 +570,7 @@ const initGrantBot = () => {
             `🤖 **Bot:** Grant Bot (@stacknowa_academy_grand_bot)\n` +
             `⏱ **Vaqt:** ${new Date().toLocaleString("uz-UZ", { timeZone: "Asia/Tashkent" })}`;
 
-          sendGrantNotification(failAdminMsg).catch((err) =>
-            console.error("Grant bot fail admin notification error:", err.message)
-          );
+          await sendGrantNotification(failAdminMsg);
         }
       } catch (e) {
         console.error("Grant bot finish notification trigger error:", e.message);

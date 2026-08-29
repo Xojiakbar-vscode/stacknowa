@@ -22,43 +22,50 @@ const sendLeadNotification = async (lead) => {
     `📝 **Qiziqqan kursi / Izoh:** ${lead.notes || "Ko'rsatilmagan"}\n` +
     `⏱ **Vaqt:** ${new Date().toLocaleString("uz-UZ", { timeZone: "Asia/Tashkent" })}`;
 
-  for (const chatId of ADMIN_CHAT_IDS) {
-    try {
-      const postData = JSON.stringify({
-        chat_id: chatId,
-        text: message,
-        parse_mode: "Markdown",
-      });
-
-      const options = {
-        hostname: "api.telegram.org",
-        port: 443,
-        path: `/bot${token}/sendMessage`,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Content-Length": Buffer.byteLength(postData),
-        },
-      };
-
-      const req = https.request(options, (res) => {
-        let data = "";
-        res.on("data", (chunk) => (data += chunk));
-        res.on("end", () => {
-          console.log(`Telegram xabarnoma chat_id ${chatId} ga yuborildi ✅`);
+  const promises = ADMIN_CHAT_IDS.map((chatId) => {
+    return new Promise((resolve) => {
+      try {
+        const postData = JSON.stringify({
+          chat_id: chatId,
+          text: message,
+          parse_mode: "Markdown",
         });
-      });
 
-      req.on("error", (e) => {
-        console.error(`Telegram xabarnoma xatosi (chat_id: ${chatId}):`, e.message);
-      });
+        const options = {
+          hostname: "api.telegram.org",
+          port: 443,
+          path: `/bot${token}/sendMessage`,
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": Buffer.byteLength(postData),
+          },
+        };
 
-      req.write(postData);
-      req.end();
-    } catch (err) {
-      console.error(`Telegram xabarnoma yuborishda xatolik (chat_id: ${chatId}):`, err.message);
-    }
-  }
+        const req = https.request(options, (res) => {
+          let data = "";
+          res.on("data", (chunk) => (data += chunk));
+          res.on("end", () => {
+            console.log(`Telegram xabarnoma chat_id ${chatId} ga yuborildi ✅`);
+            resolve(true);
+          });
+        });
+
+        req.on("error", (e) => {
+          console.error(`Telegram xabarnoma xatosi (chat_id: ${chatId}):`, e.message);
+          resolve(false);
+        });
+
+        req.write(postData);
+        req.end();
+      } catch (err) {
+        console.error(`Telegram xabarnoma yuborishda xatolik (chat_id: ${chatId}):`, err.message);
+        resolve(false);
+      }
+    });
+  });
+
+  await Promise.all(promises);
 };
 
 /**
@@ -66,50 +73,58 @@ const sendLeadNotification = async (lead) => {
  * specifically via Grant Telegram Bot (@stacknowa_academy_grand_bot).
  */
 const sendGrantNotification = async (messageText) => {
-  const token = process.env.GRANT_BOT_TOKEN || "8893807091:AAF8zTIs8n9KJteLWQr63kO63W_jrIgNXDA";
+  const token = process.env.GRANT_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || "8893807091:AAF8zTIs8n9KJteLWQr63kO63W_jrIgNXDA";
   if (!token) {
     console.log("GRANT_BOT_TOKEN topilmadi, xabarnoma yuborilmadi.");
     return;
   }
 
-  for (const chatId of ADMIN_CHAT_IDS) {
-    try {
-      const postData = JSON.stringify({
-        chat_id: chatId,
-        text: messageText,
-        parse_mode: "Markdown",
-      });
-
-      const options = {
-        hostname: "api.telegram.org",
-        port: 443,
-        path: `/bot${token}/sendMessage`,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Content-Length": Buffer.byteLength(postData),
-        },
-      };
-
-      const req = https.request(options, (res) => {
-        let data = "";
-        res.on("data", (chunk) => (data += chunk));
-        res.on("end", () => {
-          console.log(`Grant bot telegram xabarnomasi chat_id ${chatId} ga yuborildi ✅`);
+  const promises = ADMIN_CHAT_IDS.map((chatId) => {
+    return new Promise((resolve) => {
+      try {
+        const postData = JSON.stringify({
+          chat_id: chatId,
+          text: messageText,
+          parse_mode: "Markdown",
         });
-      });
 
-      req.on("error", (e) => {
-        console.error(`Grant bot telegram xabarnoma xatosi (chat_id: ${chatId}):`, e.message);
-      });
+        const options = {
+          hostname: "api.telegram.org",
+          port: 443,
+          path: `/bot${token}/sendMessage`,
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": Buffer.byteLength(postData),
+          },
+        };
 
-      req.write(postData);
-      req.end();
-    } catch (err) {
-      console.error(`Grant bot telegram xabarnoma yuborishda xatolik (chat_id: ${chatId}):`, err.message);
-    }
-  }
+        const req = https.request(options, (res) => {
+          let data = "";
+          res.on("data", (chunk) => (data += chunk));
+          res.on("end", () => {
+            console.log(`Grant bot telegram xabarnomasi chat_id ${chatId} ga yuborildi ✅`);
+            resolve(true);
+          });
+        });
+
+        req.on("error", (e) => {
+          console.error(`Grant bot telegram xabarnoma xatosi (chat_id: ${chatId}):`, e.message);
+          resolve(false);
+        });
+
+        req.write(postData);
+        req.end();
+      } catch (err) {
+        console.error(`Grant bot telegram xabarnoma yuborishda xatolik (chat_id: ${chatId}):`, err.message);
+        resolve(false);
+      }
+    });
+  });
+
+  await Promise.all(promises);
 };
 
 module.exports = { sendLeadNotification, sendGrantNotification, ADMIN_CHAT_IDS };
+
 

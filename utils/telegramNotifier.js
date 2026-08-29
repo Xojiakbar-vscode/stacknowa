@@ -6,8 +6,10 @@ const ADMIN_CHAT_IDS = ["1828931356", "1743441642", "6519831069"];
 /**
  * Sends a Telegram notification message to specified Admin Chat IDs
  * whenever a new lead is submitted (via Academy Bot).
+ * @param {Object} lead - Lead database object
+ * @param {String|Number} [excludeUserId] - Optional user Telegram ID to skip notifying themselves
  */
-const sendLeadNotification = async (lead) => {
+const sendLeadNotification = async (lead, excludeUserId = null) => {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) {
     console.log("TELEGRAM_BOT_TOKEN topilmadi, xabarnoma yuborilmadi.");
@@ -23,6 +25,11 @@ const sendLeadNotification = async (lead) => {
     `⏱ **Vaqt:** ${new Date().toLocaleString("uz-UZ", { timeZone: "Asia/Tashkent" })}`;
 
   const promises = ADMIN_CHAT_IDS.map((chatId) => {
+    // If the admin themselves performed the action, skip sending to their own chat
+    if (excludeUserId && String(chatId) === String(excludeUserId)) {
+      return Promise.resolve(true);
+    }
+
     return new Promise((resolve) => {
       try {
         const postData = JSON.stringify({
@@ -71,8 +78,10 @@ const sendLeadNotification = async (lead) => {
 /**
  * Sends a Telegram notification message to specified Admin Chat IDs
  * specifically via Grant Telegram Bot (@stacknowa_academy_grand_bot).
+ * @param {String} messageText - Markdown formatted text message
+ * @param {String|Number} [excludeUserId] - Optional user Telegram ID to skip notifying themselves
  */
-const sendGrantNotification = async (messageText) => {
+const sendGrantNotification = async (messageText, excludeUserId = null) => {
   const token = process.env.GRANT_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || "8893807091:AAF8zTIs8n9KJteLWQr63kO63W_jrIgNXDA";
   if (!token) {
     console.log("GRANT_BOT_TOKEN topilmadi, xabarnoma yuborilmadi.");
@@ -80,6 +89,11 @@ const sendGrantNotification = async (messageText) => {
   }
 
   const promises = ADMIN_CHAT_IDS.map((chatId) => {
+    // If the admin themselves performed the action, skip sending to their own chat
+    if (excludeUserId && String(chatId) === String(excludeUserId)) {
+      return Promise.resolve(true);
+    }
+
     return new Promise((resolve) => {
       try {
         const postData = JSON.stringify({

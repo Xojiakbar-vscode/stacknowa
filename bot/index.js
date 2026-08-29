@@ -211,6 +211,28 @@ const initTelegramBot = () => {
     }
   });
 
+const isValidName = (name) => {
+  if (!name || typeof name !== "string") return false;
+  return name.trim().length >= 3;
+};
+
+const validateAndFormatPhone = (phoneInput) => {
+  if (!phoneInput || typeof phoneInput !== "string") return null;
+  const digitsOnly = phoneInput.replace(/\D/g, "");
+
+  if (digitsOnly.length === 9) {
+    return `+998${digitsOnly}`;
+  }
+  if (digitsOnly.length === 12 && digitsOnly.startsWith("998")) {
+    return `+${digitsOnly}`;
+  }
+  if (digitsOnly.length >= 7 && digitsOnly.length <= 15) {
+    return phoneInput.startsWith("+") ? phoneInput.trim() : `+${digitsOnly}`;
+  }
+
+  return null;
+};
+
   // Text input handler for Name and Phone
   bot.on("text", async (ctx) => {
     const userId = ctx.from.id;
@@ -218,12 +240,16 @@ const initTelegramBot = () => {
     const text = ctx.message.text.trim();
 
     if (session.step === "ENTER_NAME") {
+      if (!isValidName(text)) {
+        return ctx.reply("⚠️ Ism va familiyangiz kamida 3 ta harfdan iborat bo'lishi kerak!\n\nIltimos, ismingiz va familiyangizni qayta kiriting:");
+      }
+
       session.fullName = text;
       session.step = "ENTER_PHONE";
 
       return ctx.reply(
         `Rahmat, ${text}! 👍\n\n` +
-        `Endi telefon raqamingizni kiriting yoki pastdagi **"📱 Telefon raqamni yuborish"** tugmasini bosing:`,
+        `Endi telefon raqamingizni kiriting (masalan: +998901234567) yoki pastdagi **"📱 Telefon raqamni yuborish"** tugmasini bosing:`,
         Markup.keyboard([
           [Markup.button.contactRequest("📱 Telefon raqamni yuborish")],
         ]).resize().oneTime()
@@ -231,8 +257,18 @@ const initTelegramBot = () => {
     }
 
     if (session.step === "ENTER_PHONE") {
-      const phone = text;
-      await processRegistration(ctx, userId, session, phone);
+      const formattedPhone = validateAndFormatPhone(text);
+      if (!formattedPhone) {
+        return ctx.reply(
+          `⚠️ Noto'g'ri telefon raqam kiritildi!\n\n` +
+          `Iltimos, amaldagi telefon raqamingizni kiriting (masalan: +998 90 123 45 67) yoki pastdagi **"📱 Telefon raqamni yuborish"** tugmasini bosing:`,
+          Markup.keyboard([
+            [Markup.button.contactRequest("📱 Telefon raqamni yuborish")],
+          ]).resize().oneTime()
+        );
+      }
+
+      await processRegistration(ctx, userId, session, formattedPhone);
     }
   });
 
@@ -240,10 +276,11 @@ const initTelegramBot = () => {
   bot.on("contact", async (ctx) => {
     const userId = ctx.from.id;
     const session = getSession(userId);
-    const phone = ctx.message.contact.phone_number;
+    const rawPhone = ctx.message.contact.phone_number;
 
     if (session.step === "ENTER_PHONE") {
-      await processRegistration(ctx, userId, session, phone);
+      const formattedPhone = validateAndFormatPhone(rawPhone) || (rawPhone.startsWith("+") ? rawPhone : `+${rawPhone}`);
+      await processRegistration(ctx, userId, session, formattedPhone);
     }
   });
 

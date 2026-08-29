@@ -125,6 +125,34 @@ const mapLetterToIndex = (letter) => {
 };
 
 /**
+ * Validates name length (must be at least 3 characters)
+ */
+const isValidName = (name) => {
+  if (!name || typeof name !== "string") return false;
+  return name.trim().length >= 3;
+};
+
+/**
+ * Validates and formats phone number input
+ */
+const validateAndFormatPhone = (phoneInput) => {
+  if (!phoneInput || typeof phoneInput !== "string") return null;
+  const digitsOnly = phoneInput.replace(/\D/g, "");
+
+  if (digitsOnly.length === 9) {
+    return `+998${digitsOnly}`;
+  }
+  if (digitsOnly.length === 12 && digitsOnly.startsWith("998")) {
+    return `+${digitsOnly}`;
+  }
+  if (digitsOnly.length >= 7 && digitsOnly.length <= 15) {
+    return phoneInput.startsWith("+") ? phoneInput.trim() : `+${digitsOnly}`;
+  }
+
+  return null;
+};
+
+/**
  * Initializes and starts the dedicated Grant Telegram Bot (@stacknowa_academy_grand_bot)
  */
 const initGrantBot = () => {
@@ -207,9 +235,7 @@ const initGrantBot = () => {
         `🆔 **Telegram ID:** ${userId}\n` +
         `⏱ **Vaqt:** ${new Date().toLocaleString("uz-UZ", { timeZone: "Asia/Tashkent" })}`;
 
-      sendGrantNotification(startBotMsg).catch((err) =>
-        console.error("Grant bot start command notification error:", err.message)
-      );
+      await sendGrantNotification(startBotMsg, userId);
     } catch (e) {
       console.error("Start command notification trigger error:", e.message);
     }
@@ -271,12 +297,16 @@ const initGrantBot = () => {
     const text = ctx.message.text.trim();
 
     if (session.step === "ENTER_NAME") {
+      if (!isValidName(text)) {
+        return ctx.reply("⚠️ Ism va familiyangiz kamida 3 ta harfdan iborat bo'lishi kerak!\n\nIltimos, ismingiz va familiyangizni qayta kiriting:");
+      }
+
       session.fullName = text;
       session.step = "ENTER_PHONE";
 
       return ctx.reply(
         `Rahmat, ${text}! 👍\n\n` +
-        `Telefon raqamingizni kiriting yoki pastdagi tugmani bosing:`,
+        `Telefon raqamingizni kiriting (masalan: +998901234567) yoki pastdagi tugmani bosing:`,
         Markup.keyboard([
           [Markup.button.contactRequest("📱 Telefon raqamni yuborish")],
         ]).resize().oneTime()
@@ -284,7 +314,18 @@ const initGrantBot = () => {
     }
 
     if (session.step === "ENTER_PHONE") {
-      session.phone = text;
+      const formattedPhone = validateAndFormatPhone(text);
+      if (!formattedPhone) {
+        return ctx.reply(
+          `⚠️ Noto'g'ri telefon raqam kiritildi!\n\n` +
+          `Iltimos, amaldagi telefon raqamingizni kiriting (masalan: +998 90 123 45 67) yoki pastdagi tugmani bosing:`,
+          Markup.keyboard([
+            [Markup.button.contactRequest("📱 Telefon raqamni yuborish")],
+          ]).resize().oneTime()
+        );
+      }
+
+      session.phone = formattedPhone;
       await startQuizQuestions(ctx, userId, session);
     }
   });
@@ -293,10 +334,11 @@ const initGrantBot = () => {
   bot.on("contact", async (ctx) => {
     const userId = ctx.from.id;
     const session = getSession(userId);
-    const phone = ctx.message.contact.phone_number;
+    const rawPhone = ctx.message.contact.phone_number;
 
     if (session.step === "ENTER_PHONE") {
-      session.phone = phone;
+      const formattedPhone = validateAndFormatPhone(rawPhone) || (rawPhone.startsWith("+") ? rawPhone : `+${rawPhone}`);
+      session.phone = formattedPhone;
       await startQuizQuestions(ctx, userId, session);
     }
   });
@@ -383,9 +425,7 @@ const initGrantBot = () => {
           `📝 **Holat:** 1-Bosqich onlayn testini boshladi 🎓\n` +
           `⏱ **Vaqt:** ${new Date().toLocaleString("uz-UZ", { timeZone: "Asia/Tashkent" })}`;
 
-        sendGrantNotification(startMsg).catch((err) =>
-          console.error("Grant bot start admin notification error:", err.message)
-        );
+        await sendGrantNotification(startMsg, userId);
       } catch (e) {
         console.error("Grant bot start notification trigger error:", e.message);
       }
@@ -558,7 +598,7 @@ const initGrantBot = () => {
             `🤖 **Bot:** Grant Bot (@stacknowa_academy_grand_bot)\n` +
             `⏱ **Vaqt:** ${new Date().toLocaleString("uz-UZ", { timeZone: "Asia/Tashkent" })}`;
 
-          await sendGrantNotification(successAdminMsg);
+          await sendGrantNotification(successAdminMsg, userId);
         } else {
           const failAdminMsg =
             `📊 **Grant Imtihon Natijasi (O'ta olmadi)**\n\n` +
@@ -570,7 +610,7 @@ const initGrantBot = () => {
             `🤖 **Bot:** Grant Bot (@stacknowa_academy_grand_bot)\n` +
             `⏱ **Vaqt:** ${new Date().toLocaleString("uz-UZ", { timeZone: "Asia/Tashkent" })}`;
 
-          await sendGrantNotification(failAdminMsg);
+          await sendGrantNotification(failAdminMsg, userId);
         }
       } catch (e) {
         console.error("Grant bot finish notification trigger error:", e.message);

@@ -19,8 +19,10 @@ exports.createCourse = async (req, res) => {
 
   try {
     const slug = req.body.slug || `${slugify(req.body.title)}-${Date.now()}`;
+    const mentorId = req.body.mentorId ? Number(req.body.mentorId) : null;
     const course = await Course.create({
       ...req.body,
+      mentorId,
       slug,
     });
     return res.status(201).json({ message: "Kurs yaratildi", course });
@@ -114,7 +116,11 @@ exports.updateCourse = async (req, res) => {
       req.body.slug = `${slugify(req.body.title)}-${Date.now()}`;
     }
 
-    await course.update(req.body);
+    const mentorId = req.body.mentorId ? Number(req.body.mentorId) : null;
+    await course.update({
+      ...req.body,
+      mentorId,
+    });
     return res.status(200).json({ message: "Kurs yangilandi", course });
   } catch (err) {
     return res.status(500).json({ message: err.message });

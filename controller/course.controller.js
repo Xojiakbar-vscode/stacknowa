@@ -58,7 +58,7 @@ exports.getCourses = async (req, res) => {
     const courses = await Course.findAll({
       where,
       include: [{ model: Mentor, as: "mentor", attributes: ["id", "fullName", "role", "photoUrl", "experience"] }],
-      order: [["createdAt", "DESC"]],
+      order: [["orderIndex", "ASC"], ["createdAt", "DESC"]],
     });
 
     return res.status(200).json(courses);

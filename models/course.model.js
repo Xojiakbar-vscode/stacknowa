@@ -79,6 +79,10 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       allowNull: true,
     },
+    orderIndex: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+    },
   });
 
   Course.associate = (models) => {

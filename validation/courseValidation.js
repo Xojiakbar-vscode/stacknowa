@@ -20,6 +20,7 @@ const validateCourse = (data) => {
     isFeatured: Joi.boolean().optional(),
     status: Joi.string().valid("published", "draft").optional(),
     mentorId: Joi.number().optional().allow(null, ""),
+    orderIndex: Joi.number().optional().allow(null),
   });
 
   return schema.unknown(true).validate(data);

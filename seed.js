@@ -7,8 +7,8 @@ const seedDatabase = async () => {
     console.log("Baza jadvallari tozalandi va qayta yaratildi 🔄");
 
     const adminName = process.env.ADMIN_NAME || "Admin Stacknowa";
-    const adminEmail = process.env.ADMIN_EMAIL || "admin@stacknowa.uz";
-    const adminPassword = process.env.ADMIN_PASSWORD || "adminpassword123";
+    const adminEmail = process.env.ADMIN_EMAIL || "isomiddinxakimjanov@gmail.com";
+    const adminPassword = process.env.ADMIN_PASSWORD || "xakimdjanov._.7";
 
     // 1. Create Super Admin from .env
     const admin = await User.create({

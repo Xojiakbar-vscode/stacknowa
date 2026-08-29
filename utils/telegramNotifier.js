@@ -5,7 +5,7 @@ const ADMIN_CHAT_IDS = ["1828931356", "1743441642", "6519831069"];
 
 /**
  * Sends a Telegram notification message to specified Admin Chat IDs
- * whenever a new lead is submitted.
+ * whenever a new lead is submitted (via Academy Bot).
  */
 const sendLeadNotification = async (lead) => {
   const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -61,4 +61,55 @@ const sendLeadNotification = async (lead) => {
   }
 };
 
-module.exports = { sendLeadNotification, ADMIN_CHAT_IDS };
+/**
+ * Sends a Telegram notification message to specified Admin Chat IDs
+ * specifically via Grant Telegram Bot (@stacknowa_academy_grand_bot).
+ */
+const sendGrantNotification = async (messageText) => {
+  const token = process.env.GRANT_BOT_TOKEN || "8893807091:AAF8zTIs8n9KJteLWQr63kO63W_jrIgNXDA";
+  if (!token) {
+    console.log("GRANT_BOT_TOKEN topilmadi, xabarnoma yuborilmadi.");
+    return;
+  }
+
+  for (const chatId of ADMIN_CHAT_IDS) {
+    try {
+      const postData = JSON.stringify({
+        chat_id: chatId,
+        text: messageText,
+        parse_mode: "Markdown",
+      });
+
+      const options = {
+        hostname: "api.telegram.org",
+        port: 443,
+        path: `/bot${token}/sendMessage`,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(postData),
+        },
+      };
+
+      const req = https.request(options, (res) => {
+        let data = "";
+        res.on("data", (chunk) => (data += chunk));
+        res.on("end", () => {
+          console.log(`Grant bot telegram xabarnomasi chat_id ${chatId} ga yuborildi ✅`);
+        });
+      });
+
+      req.on("error", (e) => {
+        console.error(`Grant bot telegram xabarnoma xatosi (chat_id: ${chatId}):`, e.message);
+      });
+
+      req.write(postData);
+      req.end();
+    } catch (err) {
+      console.error(`Grant bot telegram xabarnoma yuborishda xatolik (chat_id: ${chatId}):`, err.message);
+    }
+  }
+};
+
+module.exports = { sendLeadNotification, sendGrantNotification, ADMIN_CHAT_IDS };
+

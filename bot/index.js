@@ -1,5 +1,6 @@
 const { Telegraf, Markup } = require("telegraf");
 const { Course, Event, Lead } = require("../models");
+const { sendLeadNotification } = require("../utils/telegramNotifier");
 
 /**
  * Initializes and starts the Telegram Bot for Stacknowa Academy.
@@ -258,6 +259,9 @@ const initTelegramBot = () => {
         notes: session.type === "EVENT" ? `🔥 Masterclass: ${session.selectedTitle}` : `📚 Kurs: ${session.selectedTitle}`,
         status: "New",
       });
+
+      // Send Telegram notification to specified admin chat IDs
+      sendLeadNotification(lead).catch((err) => console.error("Bot lead telegram notification error:", err));
 
       // If Event, decrement seats left
       if (session.type === "EVENT" && session.selectedId) {

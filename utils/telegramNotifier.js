@@ -1,0 +1,64 @@
+const https = require("https");
+
+// Target Telegram Chat IDs for receiving new Lead notifications via @stacknowa_academy_bot
+const ADMIN_CHAT_IDS = ["1828931356", "1743441642", "6519831069"];
+
+/**
+ * Sends a Telegram notification message to specified Admin Chat IDs
+ * whenever a new lead is submitted.
+ */
+const sendLeadNotification = async (lead) => {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) {
+    console.log("TELEGRAM_BOT_TOKEN topilmadi, xabarnoma yuborilmadi.");
+    return;
+  }
+
+  const message =
+    `📥 **Yangi Ariza (Lead) Keldi!** 🎉\n\n` +
+    `👤 **Ism:** ${lead.fullName || "Ko'rsatilmagan"}\n` +
+    `📞 **Telefon:** ${lead.phone || "Ko'rsatilmagan"}\n` +
+    `📌 **Manbaa (Source):** ${lead.source || "Landing"}\n` +
+    `📝 **Qiziqqan kursi / Izoh:** ${lead.notes || "Ko'rsatilmagan"}\n` +
+    `⏱ **Vaqt:** ${new Date().toLocaleString("uz-UZ", { timeZone: "Asia/Tashkent" })}`;
+
+  for (const chatId of ADMIN_CHAT_IDS) {
+    try {
+      const postData = JSON.stringify({
+        chat_id: chatId,
+        text: message,
+        parse_mode: "Markdown",
+      });
+
+      const options = {
+        hostname: "api.telegram.org",
+        port: 443,
+        path: `/bot${token}/sendMessage`,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(postData),
+        },
+      };
+
+      const req = https.request(options, (res) => {
+        let data = "";
+        res.on("data", (chunk) => (data += chunk));
+        res.on("end", () => {
+          console.log(`Telegram xabarnoma chat_id ${chatId} ga yuborildi ✅`);
+        });
+      });
+
+      req.on("error", (e) => {
+        console.error(`Telegram xabarnoma xatosi (chat_id: ${chatId}):`, e.message);
+      });
+
+      req.write(postData);
+      req.end();
+    } catch (err) {
+      console.error(`Telegram xabarnoma yuborishda xatolik (chat_id: ${chatId}):`, err.message);
+    }
+  }
+};
+
+module.exports = { sendLeadNotification, ADMIN_CHAT_IDS };

@@ -1,6 +1,7 @@
 const { Lead, Course, Event } = require("../models");
 const { validateLead } = require("../validation/leadValidation");
 const { verifyCaptchaToken } = require("./captcha.controller");
+const { sendLeadNotification } = require("../utils/telegramNotifier");
 
 exports.createLead = async (req, res) => {
   const { captchaToken, captchaAnswer } = req.body;
@@ -18,6 +19,9 @@ exports.createLead = async (req, res) => {
 
   try {
     const lead = await Lead.create(req.body);
+
+    // Send Telegram notification to specified chat IDs (1828931356, 1743441642, 6519831069)
+    sendLeadNotification(lead).catch((err) => console.error("Lead telegram notification error:", err));
 
     // If linked to event, decrement seats_left if available
     if (req.body.eventId) {

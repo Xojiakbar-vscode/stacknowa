@@ -1,0 +1,15 @@
+const express = require("express");
+const router = express.Router();
+const eventController = require("../controller/event.controller");
+const { authenticateToken } = require("../middleware/auth.middleware");
+
+// Public endpoints
+router.get("/", eventController.getEvents);
+router.get("/:identifier", eventController.getEventBySlugOrId);
+
+// Protected Admin endpoints
+router.post("/", authenticateToken, eventController.createEvent);
+router.put("/:id", authenticateToken, eventController.updateEvent);
+router.delete("/:id", authenticateToken, eventController.deleteEvent);
+
+module.exports = router;

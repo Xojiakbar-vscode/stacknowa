@@ -13,6 +13,8 @@ router.post("/questions", authenticateToken, grantController.createGrantQuestion
 router.put("/questions/:id", authenticateToken, grantController.updateGrantQuestion);
 router.delete("/questions/:id", authenticateToken, grantController.deleteGrantQuestion);
 router.get("/participants", authenticateToken, grantController.getGrantParticipants);
+router.delete("/participants/:id", authenticateToken, grantController.deleteGrantParticipant);
+router.delete("/participants", authenticateToken, grantController.resetAllGrantParticipants);
 router.post("/broadcast", authenticateToken, grantController.sendBroadcastMessage);
 
 module.exports = router;

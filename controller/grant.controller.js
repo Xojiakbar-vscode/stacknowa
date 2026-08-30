@@ -133,3 +133,27 @@ exports.sendBroadcastMessage = async (req, res) => {
     return res.status(500).json({ message: "Xabar yuborishda xatolik: " + err.message });
   }
 };
+
+// Delete Single Grant Participant (Reset progress)
+exports.deleteGrantParticipant = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const participant = await GrantParticipant.findByPk(id);
+    if (!participant) return res.status(404).json({ message: "Ishtirokchi topilmadi" });
+
+    await participant.destroy();
+    return res.json({ message: "Ishtirokchi natijasi va progressi o'chirildi" });
+  } catch (err) {
+    return res.status(500).json({ message: "O'chirishda xatolik: " + err.message });
+  }
+};
+
+// Reset All Grant Participants
+exports.resetAllGrantParticipants = async (req, res) => {
+  try {
+    const deletedCount = await GrantParticipant.destroy({ where: {} });
+    return res.json({ message: `Barcha ${deletedCount} ta ishtirokchilar progressi tozalandi` });
+  } catch (err) {
+    return res.status(500).json({ message: "Tozalashda xatolik: " + err.message });
+  }
+};

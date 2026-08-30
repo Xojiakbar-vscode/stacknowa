@@ -1,6 +1,7 @@
 const { Telegraf, Markup } = require("telegraf");
 const { GrantExam, GrantQuestion, GrantParticipant, Lead } = require("../models");
 const { sendGrantNotification, ADMIN_CHAT_IDS } = require("../utils/telegramNotifier");
+const { Op } = require("sequelize");
 
 let grantBotInstance = null;
 
@@ -161,6 +162,9 @@ const initGrantBot = () => {
   const bot = new Telegraf(token);
   grantBotInstance = bot;
 
+  // Auto-sync exam config and 10 questions into DB right on backend startup
+  getExamConfig();
+
   // User Session map: userId -> { step, fullName, phone, username, currentQIndex, score, questions, userId }
   const userSessions = new Map();
   // Poll map: pollId -> { userId, qIndex, correctOptionId, points }
@@ -248,6 +252,7 @@ const initGrantBot = () => {
 
     if (isAdmin) {
       inlineButtons.push([Markup.button.callback("📢 Userlarga Xabar Yuborish (Admin)", "ADMIN_BROADCAST_START")]);
+      inlineButtons.push([Markup.button.callback("🔄 Progressni Tozalash / Reset (Admin)", "ADMIN_RESET_MENU")]);
     }
 
     const welcomeMsg =
@@ -291,6 +296,88 @@ const initGrantBot = () => {
 
   bot.command("broadcast", async (ctx) => {
     await handleAdminBroadcastStart(ctx);
+  });
+
+  // Action & Command: ADMIN_RESET_MENU / /reset
+  const handleAdminResetMenu = async (ctx) => {
+    const userId = ctx.from.id;
+    if (!ADMIN_CHAT_IDS.includes(String(userId))) {
+      return ctx.reply("⚠️ Ushbu funksiya faqat adminlar uchun!");
+    }
+
+    return ctx.replyWithMarkdown(
+      `🔄 **FOYDALANUVCHILAR PROGRESSINI TOZALASH (RESET)**\n\n` +
+      `Qaysi amalni bajarmoqchisiz?`,
+      Markup.inlineKeyboard([
+        [Markup.button.callback("👤 Bitta foydalanuvchini tozalash", "ADMIN_RESET_SINGLE_PROMPT")],
+        [Markup.button.callback("🗑 BARCHA foydalanuvchilar progressini o'chirish", "ADMIN_RESET_ALL_CONFIRM")],
+      ])
+    );
+  };
+
+  bot.action("ADMIN_RESET_MENU", async (ctx) => {
+    await safeAnswerCb(ctx);
+    await handleAdminResetMenu(ctx);
+  });
+
+  bot.command("reset", async (ctx) => {
+    await handleAdminResetMenu(ctx);
+  });
+
+  bot.action("ADMIN_RESET_SINGLE_PROMPT", async (ctx) => {
+    await safeAnswerCb(ctx);
+    const userId = ctx.from.id;
+    if (!ADMIN_CHAT_IDS.includes(String(userId))) return ctx.reply("⚠️ Ruxsat berilmagan.");
+
+    const session = getSession(userId);
+    session.step = "ADMIN_WAITING_RESET_USER_INPUT";
+
+    return ctx.replyWithMarkdown(
+      `👤 **BITTA FOYDALANUVCHINI TOZALASH**\n\n` +
+      `Progressini tozalamoqchi bo'lgan foydalanuvchining **Telegram ID** si yoki **Telefon raqami** ni yuboring:\n\n` +
+      `*(Masalan: 123456789 yoki +998901234567)*\n\n` +
+      `❌ Bekor qilish uchun /cancel deb yozing.`
+    );
+  });
+
+  bot.action("ADMIN_RESET_ALL_CONFIRM", async (ctx) => {
+    await safeAnswerCb(ctx);
+    const userId = ctx.from.id;
+    if (!ADMIN_CHAT_IDS.includes(String(userId))) return ctx.reply("⚠️ Ruxsat berilmagan.");
+
+    return ctx.replyWithMarkdown(
+      `⚠️ **DIQQAT! Barcha foydalanuvchilar progressi va natijalari o'chiriladi!**\n\n` +
+      `Barcha ishtirokchilar testni qayta topshirish imkoniyatiga ega bo'lishadi. Davom etasizmi?`,
+      Markup.inlineKeyboard([
+        [Markup.button.callback("✅ Ha, barchasini tozalash", "ADMIN_RESET_ALL_DO")],
+        [Markup.button.callback("❌ Bekor qilish", "ADMIN_RESET_CANCEL")],
+      ])
+    );
+  });
+
+  bot.action("ADMIN_RESET_CANCEL", async (ctx) => {
+    await safeAnswerCb(ctx);
+    return ctx.reply("❌ Tozalash bekor qilindi.");
+  });
+
+  bot.action("ADMIN_RESET_ALL_DO", async (ctx) => {
+    await safeAnswerCb(ctx);
+    const userId = ctx.from.id;
+    if (!ADMIN_CHAT_IDS.includes(String(userId))) return ctx.reply("⚠️ Ruxsat berilmagan.");
+
+    try {
+      const deletedCount = await GrantParticipant.destroy({ where: {} });
+      userSessions.clear();
+
+      return ctx.replyWithMarkdown(
+        `✅ **Barcha foydalanuvchilarning imtihon progressi va natijalari tozalandi!** 🎉\n\n` +
+        `📊 **Jami o'chirilgan natijalar:** ${deletedCount} ta\n\n` +
+        `Barcha nomzodlar endi testni qaytadan topshirishlari mumkin.`
+      );
+    } catch (e) {
+      console.error("Reset all participants error:", e.message);
+      return ctx.reply("⚠️ Xatolik yuz berdi: " + e.message);
+    }
   });
 
   // Action: START_GRANT_TEST
@@ -380,6 +467,56 @@ const initGrantBot = () => {
         `🟢 **Yetib bordi:** ${successCount} ta foydalanuvchiga\n` +
         `🔴 **Yetib bormadi (botni bloklagan):** ${failCount} ta`
       );
+    }
+
+    if (session.step === "ADMIN_WAITING_RESET_USER_INPUT") {
+      if (!ADMIN_CHAT_IDS.includes(String(userId))) {
+        session.step = null;
+        return ctx.reply("⚠️ Ruxsat berilmagan.");
+      }
+
+      if (text.toLowerCase() === "/cancel" || text.toLowerCase() === "cancel") {
+        session.step = null;
+        return ctx.reply("❌ Bekor qilindi.");
+      }
+
+      try {
+        const participant = await GrantParticipant.findOne({
+          where: {
+            [Op.or]: [
+              { telegramId: text },
+              { phone: text },
+              { phone: text.startsWith("+") ? text : `+${text}` },
+              { phone: text.replace(/\D/g, "") },
+            ],
+          },
+        });
+
+        if (!participant) {
+          return ctx.reply(`⚠️ "${text}" bo'yicha imtihon topshirgan foydalanuvchi topilmadi. Qayta kiriting yoki /cancel ni bosing:`);
+        }
+
+        const pTelegramId = participant.telegramId;
+        const pName = participant.fullName;
+        const pPhone = participant.phone;
+
+        await participant.destroy();
+        if (pTelegramId) {
+          clearSession(Number(pTelegramId));
+        }
+
+        session.step = null;
+        return ctx.replyWithMarkdown(
+          `✅ **Foydalanuvchi progressi muvaffaqiyatli tozalandi!** 🎉\n\n` +
+          `👤 **Ism:** ${pName}\n` +
+          `📱 **Telefon:** ${pPhone}\n` +
+          `🆔 **Telegram ID:** ${pTelegramId || "Mavjud emas"}\n\n` +
+          `Endi ushbu foydalanuvchi botda imtihonni qaytadan boshlashi mumkin.`
+        );
+      } catch (err) {
+        console.error("Reset single participant error:", err.message);
+        return ctx.reply("⚠️ O'chirishda xatolik yuz berdi: " + err.message);
+      }
     }
 
     if (session.step === "ENTER_NAME") {

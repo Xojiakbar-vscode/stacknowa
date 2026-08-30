@@ -252,7 +252,7 @@ const validateAndFormatPhone = (phoneInput) => {
       `📢 **USERLARGA XABAR YUBORISH (ADMIN)**\n\n` +
       `Barcha foydalanuvchilarga yubormoqchi bo'lgan xabaringizni kiriting:\n\n` +
       `*(Xabaringiz foydalanuvchilarga "📢 Admin xabari:\n\n..." formatida yetib boradi)*\n\n` +
-      `❌ *Bekor qilish uchun `/cancel` deb yozing.*`
+      `❌ *Bekor qilish uchun /cancel deb yozing.*`
     );
   };
 

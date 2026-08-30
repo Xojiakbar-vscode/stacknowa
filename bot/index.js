@@ -1,6 +1,6 @@
 const { Telegraf, Markup } = require("telegraf");
-const { Course, Event, Lead } = require("../models");
-const { sendLeadNotification } = require("../utils/telegramNotifier");
+const { Course, Event, Lead, GrantParticipant } = require("../models");
+const { sendLeadNotification, ADMIN_CHAT_IDS } = require("../utils/telegramNotifier");
 
 /**
  * Initializes and starts the Telegram Bot for Stacknowa Academy.
@@ -29,11 +29,17 @@ const initTelegramBot = () => {
   };
 
   // Helper for Main Menu Keyboard
-  const getMainMenu = () => {
-    return Markup.keyboard([
+  const getMainMenu = (userId = null) => {
+    const buttons = [
       ["📚 Kurslarga yozilish", "🔥 Eventga yozilish"],
       ["📞 Biz bilan bog'lanish", "ℹ️ Markaz haqida"],
-    ]).resize();
+    ];
+
+    if (userId && ADMIN_CHAT_IDS.includes(String(userId))) {
+      buttons.push(["📢 Userlarga Xabar Yuborish (Admin)"]);
+    }
+
+    return Markup.keyboard(buttons).resize();
   };
 
   // /start command with Deep Linking support (e.g. /start event_3)
@@ -99,7 +105,7 @@ const initTelegramBot = () => {
       `**Stacknowa Academy** rasmiy ro'yxatdan o'tish botiga xush kelibsiz.\n\n` +
       `Sizni qaysi yo'nalish qiziqtiradi? Pastdagi menyudan tanlang:`;
 
-    return ctx.replyWithMarkdown(welcomeText, getMainMenu());
+    return ctx.replyWithMarkdown(welcomeText, getMainMenu(userId));
   });
 
   // Action: "📚 Kurslarga yozilish"
@@ -233,11 +239,81 @@ const validateAndFormatPhone = (phoneInput) => {
   return null;
 };
 
+  const handleAdminBroadcastStart = async (ctx) => {
+    const userId = ctx.from.id;
+    if (!ADMIN_CHAT_IDS.includes(String(userId))) {
+      return ctx.reply("⚠️ Ushbu funksiya faqat adminlar uchun!");
+    }
+
+    const session = getSession(userId);
+    session.step = "ADMIN_WAITING_BROADCAST_MSG";
+
+    return ctx.replyWithMarkdown(
+      `📢 **USERLARGA XABAR YUBORISH (ADMIN)**\n\n` +
+      `Barcha foydalanuvchilarga yubormoqchi bo'lgan xabaringizni kiriting:\n\n` +
+      `*(Xabaringiz foydalanuvchilarga "📢 Admin xabari:\n\n..." formatida yetib boradi)*\n\n` +
+      `❌ *Bekor qilish uchun `/cancel` deb yozing.*`
+    );
+  };
+
+  bot.hears("📢 Userlarga Xabar Yuborish (Admin)", handleAdminBroadcastStart);
+  bot.command("broadcast", handleAdminBroadcastStart);
+
   // Text input handler for Name and Phone
   bot.on("text", async (ctx) => {
     const userId = ctx.from.id;
     const session = getSession(userId);
     const text = ctx.message.text.trim();
+
+    if (session.step === "ADMIN_WAITING_BROADCAST_MSG") {
+      if (!ADMIN_CHAT_IDS.includes(String(userId))) {
+        session.step = null;
+        return ctx.reply("⚠️ Ruxsat berilmagan.");
+      }
+
+      if (text.toLowerCase() === "/cancel" || text.toLowerCase() === "cancel") {
+        session.step = null;
+        return ctx.reply("❌ Xabar yuborish bekor qilindi.", getMainMenu(userId));
+      }
+
+      let targetUserIds = [];
+      try {
+        const participants = await GrantParticipant.findAll({ attributes: ["telegramId"] });
+        targetUserIds = [...new Set(participants.map((p) => p.telegramId).filter(Boolean))];
+      } catch (e) {
+        console.error("Broadcast users fetch error:", e.message);
+      }
+
+      if (targetUserIds.length === 0) {
+        session.step = null;
+        return ctx.reply("⚠️ Hali bitta ham foydalanuvchi ro'yxatdan o'tmagan.", getMainMenu(userId));
+      }
+
+      const broadcastMsg = `📢 **Admin xabari:**\n\n${text}`;
+
+      ctx.reply(`📤 Xabar ${targetUserIds.length} ta foydalanuvchiga yuborilmoqda...`);
+
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const targetId of targetUserIds) {
+        try {
+          await bot.telegram.sendMessage(targetId, broadcastMsg, { parse_mode: "Markdown" });
+          successCount++;
+        } catch (e) {
+          failCount++;
+        }
+      }
+
+      session.step = null;
+
+      return ctx.replyWithMarkdown(
+        `✅ **Xabar muvaffaqiyatli yuborildi!** 🎉\n\n` +
+        `🟢 **Yetib bordi:** ${successCount} ta foydalanuvchiga\n` +
+        `🔴 **Yetib bormadi (botni bloklagan):** ${failCount} ta`,
+        getMainMenu(userId)
+      );
+    }
 
     if (session.step === "ENTER_NAME") {
       if (!isValidName(text)) {

@@ -1,6 +1,6 @@
 const { Telegraf, Markup } = require("telegraf");
 const { GrantExam, GrantQuestion, GrantParticipant, Lead } = require("../models");
-const { sendGrantNotification } = require("../utils/telegramNotifier");
+const { sendGrantNotification, ADMIN_CHAT_IDS } = require("../utils/telegramNotifier");
 
 let grantBotInstance = null;
 
@@ -10,101 +10,101 @@ let grantBotInstance = null;
  */
 const initialGrantQuestions = [
   {
-    questionText: "Ketma-ketlikni davom ettiring: 3, 6, 12, 24, 48, ?",
-    optionA: "72",
-    optionB: "84",
-    optionC: "96",
-    optionD: "108",
-    correctOption: "C",
+    questionText: "Ketma-ketlikni davom ettiring: 5, 10, 15, 20, ?",
+    optionA: "22",
+    optionB: "25",
+    optionC: "30",
+    optionD: "35",
+    correctOption: "B",
     points: 10,
     orderIndex: 1,
   },
   {
-    questionText: "Qaysi son ketma-ketlikni buzmoqda? 4, 9, 16, 25, 36, 48, 64",
-    optionA: "25",
-    optionB: "36",
-    optionC: "48",
-    optionD: "64",
+    questionText: "Bir haftada 7 kun bor. 3 haftada nechta kun bor?",
+    optionA: "14",
+    optionB: "18",
+    optionC: "21",
+    optionD: "24",
     correctOption: "C",
     points: 10,
     orderIndex: 2,
   },
   {
-    questionText: "Barcha A lar — B. Ba’zi B lar — C. Quyidagilardan qaysi biri albatta to‘g‘ri?",
-    optionA: "Barcha A lar C",
-    optionB: "Ba’zi A lar C",
-    optionC: "Hech bir A C emas",
-    optionD: "A lar haqida C bilan bog‘liq aniq xulosa qilib bo‘lmaydi",
+    questionText: "Ortiqchasini toping:",
+    optionA: "Olma",
+    optionB: "Nok",
+    optionC: "Banan",
+    optionD: "Kartoshka",
     correctOption: "D",
     points: 10,
     orderIndex: 3,
   },
   {
-    questionText: "Bir son o‘ylangan. Unga 8 qo‘shildi, natija 3 ga ko‘paytirildi va 12 ayrildi. Natija 30 bo‘ldi. O‘ylangan son nechchi?",
-    optionA: "6",
-    optionB: "8",
-    optionC: "10",
-    optionD: "12",
-    correctOption: "A",
+    questionText: "Agar bugun chorshanba bo‘lsa, 3 kundan keyin qaysi kun bo‘ladi?",
+    optionA: "Payshanba",
+    optionB: "Juma",
+    optionC: "Shanba",
+    optionD: "Yakshanba",
+    correctOption: "C",
     points: 10,
     orderIndex: 4,
   },
   {
-    questionText: "Uchta quti bor: birida faqat olma, birida faqat apelsin, birida esa olma va apelsin bor. Uchala qutining yorlig‘i ham noto‘g‘ri yopishtirilgan. Faqat bitta dona meva olib, barcha qutilarning to‘g‘ri nomini aniqlash uchun qaysi qutidan olish kerak?",
-    optionA: "\"Olma\" deb yozilgan qutidan",
-    optionB: "\"Apelsin\" deb yozilgan qutidan",
-    optionC: "\"Olma va apelsin\" deb yozilgan qutidan",
-    optionD: "Istalgan qutidan",
-    correctOption: "C",
+    questionText: "Ketma-ketlikni davom ettiring: 2, 4, 8, 16, ?",
+    optionA: "20",
+    optionB: "24",
+    optionC: "30",
+    optionD: "32",
+    correctOption: "D",
     points: 10,
     orderIndex: 5,
   },
   {
-    questionText: "Ketma-ketlikni davom ettiring: 2, 5, 11, 23, 47, ?",
-    optionA: "94",
-    optionB: "95",
+    questionText: "Ketma-ketlikni davom ettiring: 3, 6, 12, 24, 48, ?",
+    optionA: "72",
+    optionB: "84",
     optionC: "96",
-    optionD: "97",
-    correctOption: "B",
+    optionD: "100",
+    correctOption: "C",
     points: 10,
     orderIndex: 6,
   },
   {
-    questionText: "Bir xonada 5 kishi bor. Har bir kishi qolgan barcha odamlar bilan bir martadan qo‘l berib ko‘rishdi. Jami nechta qo‘l berishish bo‘lgan?",
-    optionA: "5",
-    optionB: "10",
-    optionC: "15",
-    optionD: "20",
+    questionText: "Bir oilada 4 ta aka-uka bor. Ularning barchasiga bitta singil umumiy. Oilada jami nechta farzand bor?",
+    optionA: "4",
+    optionB: "5",
+    optionC: "6",
+    optionD: "8",
     correctOption: "B",
     points: 10,
     orderIndex: 7,
   },
   {
-    questionText: "Ali Validan balandroq. Vali Sardordan balandroq. Sardor esa Kamoldan balandroq. Qaysi xulosa to‘g‘ri?",
-    optionA: "Kamol Alidan balandroq",
-    optionB: "Sardor Validan balandroq",
-    optionC: "Ali Kamoldan balandroq",
-    optionD: "Vali Kamoldan pastroq",
+    questionText: "1, 4, 9, 16, 25, ? ketma-ketligidagi keyingi sonni toping.",
+    optionA: "30",
+    optionB: "32",
+    optionC: "36",
+    optionD: "40",
     correctOption: "C",
     points: 10,
     orderIndex: 8,
   },
   {
-    questionText: "Agar soat 03:15 bo‘lsa, minut strelkasi qaysi raqamda turadi?",
-    optionA: "3",
-    optionB: "6",
-    optionC: "9",
-    optionD: "12",
-    correctOption: "A",
+    questionText: "Ali Validan katta. Vali Sardordan katta. Sardor Kamoldan katta. Eng kichigi kim?",
+    optionA: "Ali",
+    optionB: "Vali",
+    optionC: "Sardor",
+    optionD: "Kamol",
+    correctOption: "D",
     points: 10,
     orderIndex: 9,
   },
   {
-    questionText: "8 ta bir xil ko‘rinishdagi shar bor. Ulardan bittasi boshqalaridan og‘irroq. Oddiy tarozidan foydalanib, og‘ir sharni eng ko‘pi bilan 2 marta tortishda qanday topish mumkin?",
-    optionA: "4 ta va 4 tani tortish, keyin og‘ir guruhdan 2 ta va 2 tani tortish",
-    optionB: "3 ta va 3 tani tortish, keyin kerakli guruhdan 1 ta va 1 tani tortish",
-    optionC: "2 ta va 2 tani tortish, keyin qolganlarini tortish",
-    optionD: "4 ta va 4 tani tortish, keyin 4 tasini yana tortish",
+    questionText: "Bir xonada 6 kishi bor. Har bir kishi boshqa har bir kishi bilan bir martadan qo‘l berib ko‘rishdi. Jami nechta qo‘l berishish bo‘lgan?",
+    optionA: "12",
+    optionB: "15",
+    optionC: "18",
+    optionD: "30",
     correctOption: "B",
     points: 10,
     orderIndex: 10,
@@ -193,11 +193,12 @@ const initGrantBot = () => {
         });
       }
 
-      // Check if GrantQuestion table is empty. If empty, seed initial 10 questions ONCE only!
+      // Seed / Sync the 10 initial questions in database
       const qCount = await GrantQuestion.count();
-      if (qCount === 0) {
+      if (qCount === 0 || qCount === 10) {
+        await GrantQuestion.destroy({ where: {} });
         await GrantQuestion.bulkCreate(initialGrantQuestions);
-        console.log("🎓 Grant bot uchun 10 ta mantiqiy savol ma'lumotlar bazasiga saqlandi! ✅");
+        console.log("🎓 Grant bot uchun 10 ta yangi osonlashtirilgan savol ma'lumotlar bazasiga saqlandi! ✅");
       }
 
       return exam;
@@ -225,6 +226,7 @@ const initGrantBot = () => {
 
     const usernameStr = ctx.from.username ? `@${ctx.from.username}` : `ID: ${userId}`;
     const userFullName = `${ctx.from.first_name || ""} ${ctx.from.last_name || ""}`.trim() || "Foydalanuvchi";
+    const isAdmin = ADMIN_CHAT_IDS.includes(String(userId));
 
     // Notify admins whenever a new user starts the bot
     try {
@@ -240,6 +242,14 @@ const initGrantBot = () => {
       console.error("Start command notification trigger error:", e.message);
     }
 
+    const inlineButtons = [
+      [Markup.button.callback("🚀 Imtihonni Boshlash", "START_GRANT_TEST")],
+    ];
+
+    if (isAdmin) {
+      inlineButtons.push([Markup.button.callback("📢 Userlarga Xabar Yuborish (Admin)", "ADMIN_BROADCAST_START")]);
+    }
+
     const welcomeMsg =
       `🎓 **${exam ? exam.title : "Stacknowa Academy Grant Imtihoni"}**\n\n` +
       `📌 **Oflayn Imtihon Ma'lumotlari:**\n` +
@@ -247,14 +257,40 @@ const initGrantBot = () => {
       `📍 Manzil: ${exam ? exam.location : "Namangan, Bank ko'chasi, 9-uy"}\n` +
       `📞 Aloqa: ${exam ? exam.phone : "+998 20 014 66 67"}\n` +
       `👥 Qolgan grant o'rinlari: **${exam ? exam.seatsLeft : 35} ta**\n\n` +
+      (isAdmin ? `👑 **Siz Adminsiz!** Pastdagi tugma orqali foydalanuvchilarga xabar yuborishingiz mumkin.\n\n` : "") +
       `1-Bosqich testini boshlash uchun tugmani bosing:`;
 
     return ctx.replyWithMarkdown(
       welcomeMsg,
-      Markup.inlineKeyboard([
-        [Markup.button.callback("🚀 Imtihonni Boshlash", "START_GRANT_TEST")],
-      ])
+      Markup.inlineKeyboard(inlineButtons)
     );
+  });
+
+  // Action & Command: ADMIN_BROADCAST_START / /broadcast
+  const handleAdminBroadcastStart = async (ctx) => {
+    const userId = ctx.from.id;
+    if (!ADMIN_CHAT_IDS.includes(String(userId))) {
+      return ctx.reply("⚠️ Ushbu funksiya faqat adminlar uchun!");
+    }
+
+    const session = getSession(userId);
+    session.step = "ADMIN_WAITING_BROADCAST_MSG";
+
+    return ctx.replyWithMarkdown(
+      `📢 **USERLARGA XABAR YUBORISH (ADMIN)**\n\n` +
+      `Barcha botdan ro'yxatdan o'tgan foydalanuvchilarga yubormoqchi bo'lgan xabaringizni kiriting:\n\n` +
+      `*(Xabaringiz foydalanuvchilarga "📢 Admin xabari:\n\n..." formatida yetib boradi)*\n\n` +
+      `❌ *Bekor qilish uchun `/cancel` deb yozing.*`
+    );
+  };
+
+  bot.action("ADMIN_BROADCAST_START", async (ctx) => {
+    await safeAnswerCb(ctx);
+    await handleAdminBroadcastStart(ctx);
+  });
+
+  bot.command("broadcast", async (ctx) => {
+    await handleAdminBroadcastStart(ctx);
   });
 
   // Action: START_GRANT_TEST
@@ -290,11 +326,61 @@ const initGrantBot = () => {
     return ctx.reply("Ismingiz va familiyangizni kiriting:");
   });
 
-  // Text Handler: Name and Phone Input
+  // Text Handler: Name, Phone Input & Admin Broadcast
   bot.on("text", async (ctx) => {
     const userId = ctx.from.id;
     const session = getSession(userId);
     const text = ctx.message.text.trim();
+
+    if (session.step === "ADMIN_WAITING_BROADCAST_MSG") {
+      if (!ADMIN_CHAT_IDS.includes(String(userId))) {
+        session.step = null;
+        return ctx.reply("⚠️ Ruxsat berilmagan.");
+      }
+
+      if (text.toLowerCase() === "/cancel" || text.toLowerCase() === "cancel") {
+        session.step = null;
+        return ctx.reply("❌ Xabar yuborish bekor qilindi.");
+      }
+
+      let targetUserIds = [];
+      try {
+        const participants = await GrantParticipant.findAll({ attributes: ["telegramId"] });
+        targetUserIds = [...new Set(participants.map((p) => p.telegramId).filter(Boolean))];
+      } catch (e) {
+        console.error("Broadcast participants fetch error:", e.message);
+      }
+
+      if (targetUserIds.length === 0) {
+        session.step = null;
+        return ctx.reply("⚠️ Hali bitta ham foydalanuvchi ro'yxatdan o'tmagan.");
+      }
+
+      const broadcastFormattedMsg = `📢 **Admin xabari:**\n\n${text}`;
+
+      ctx.reply(`📤 Xabar ${targetUserIds.length} ta foydalanuvchiga yuborilmoqda...`);
+
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const targetId of targetUserIds) {
+        try {
+          await bot.telegram.sendMessage(targetId, broadcastFormattedMsg, { parse_mode: "Markdown" });
+          successCount++;
+        } catch (e) {
+          console.error(`Broadcast message failed for ${targetId}:`, e.message);
+          failCount++;
+        }
+      }
+
+      session.step = null;
+
+      return ctx.replyWithMarkdown(
+        `✅ **Xabar muvaffaqiyatli yuborildi!** 🎉\n\n` +
+        `🟢 **Yetib bordi:** ${successCount} ta foydalanuvchiga\n` +
+        `🔴 **Yetib bormadi (botni bloklagan):** ${failCount} ta`
+      );
+    }
 
     if (session.step === "ENTER_NAME") {
       if (!isValidName(text)) {
@@ -580,10 +666,6 @@ const initGrantBot = () => {
         console.error("Grant finish lead update error:", e.message);
       }
 
-      // 3. Decrement available seats if passed
-      if (passed && exam && exam.seatsLeft > 0) {
-        await exam.decrement("seatsLeft");
-      }
 
       // 4. Send Telegram notification to Lead Admins via Grant Bot (@stacknowa_academy_grand_bot)
       try {

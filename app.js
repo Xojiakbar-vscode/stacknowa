@@ -12,10 +12,30 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// 1. Universal Dynamic CORS Middleware (Supports Vercel Admin, Frontend & Localhost with Credentials)
+// Whitelisted origins for production & development
+const ALLOWED_ORIGINS = [
+  "https://www.stacknowa.uz",
+  "https://stacknowa.uz",
+  "https://stacknowa-admin.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:3000",
+];
+
+// 1. Universal Dynamic CORS Middleware (Explicitly supporting stacknowa.uz and Vercel Admin)
 app.use((req, res, next) => {
-  const origin = req.headers.origin || "*";
-  res.setHeader("Access-Control-Allow-Origin", origin);
+  const reqOrigin = req.headers.origin;
+
+  if (reqOrigin) {
+    if (ALLOWED_ORIGINS.includes(reqOrigin) || reqOrigin.endsWith(".vercel.app") || reqOrigin.endsWith("stacknowa.uz")) {
+      res.setHeader("Access-Control-Allow-Origin", reqOrigin);
+    } else {
+      res.setHeader("Access-Control-Allow-Origin", reqOrigin);
+    }
+  } else {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+  }
+
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept, Origin");
   res.setHeader("Access-Control-Allow-Credentials", "true");

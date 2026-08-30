@@ -153,7 +153,7 @@ const initTelegramBot = () => {
       "📍 **Stacknowa Academy**\n\n" +
       "🏢 Manzil: Namangan shahri, Bank ko'chasi (sobiq Bankovskaya), 9-uy. Mo'ljal: \"Kosmos\" oshxonasi (kafe) orqasida\n" +
       "📞 Telefon: +998 20 014 66 67\n" +
-      "💬 Admin: @stacknowa_admin\n" +
+      "💬 Admin: @stacknowa\\_admin\n" +
       `🌐 Veb-sayt: [stacknowa.uz](${webUrl})`,
       Markup.inlineKeyboard([
         [Markup.button.url("🌐 Rasmiy Veb-saytga o'tish", webUrl)],

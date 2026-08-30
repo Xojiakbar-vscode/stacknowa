@@ -507,7 +507,7 @@ const initGrantBot = () => {
           `👤 **Ism:** ${fullName}\n` +
           `📱 **Telefon:** ${phone}\n` +
           `✈️ **Telegram:** ${usernameStr}\n` +
-          `📌 **Manbaa:** Grant Bot (@stacknowa_academy_grand_bot)\n` +
+          `📌 **Manbaa:** Grant Bot (@stacknowa\\_academy\\_grand\\_bot)\n` +
           `📝 **Holat:** 1-Bosqich onlayn testini boshladi 🎓\n` +
           `⏱ **Vaqt:** ${new Date().toLocaleString("uz-UZ", { timeZone: "Asia/Tashkent" })}`;
 
@@ -677,7 +677,7 @@ const initGrantBot = () => {
             `✈️ **Telegram:** ${usernameStr}\n` +
             `📊 **Natija:** **${finalScore}%** ball (Saralash: 70%+)\n` +
             `📌 **STATUS:** 2-Bosqich Oflayn Imtihonga Yo'llanma Olindi 🎓\n` +
-            `🤖 **Bot:** Grant Bot (@stacknowa_academy_grand_bot)\n` +
+            `🤖 **Bot:** Grant Bot (@stacknowa\\_academy\\_grand\\_bot)\n` +
             `⏱ **Vaqt:** ${new Date().toLocaleString("uz-UZ", { timeZone: "Asia/Tashkent" })}`;
 
           await sendGrantNotification(successAdminMsg, userId);
@@ -689,7 +689,7 @@ const initGrantBot = () => {
             `✈️ **Telegram:** ${usernameStr}\n` +
             `📊 **Natija:** **${finalScore}%** ball (Saralash: 70%+)\n` +
             `📌 **STATUS:** Imtihondan o'ta olmadi\n` +
-            `🤖 **Bot:** Grant Bot (@stacknowa_academy_grand_bot)\n` +
+            `🤖 **Bot:** Grant Bot (@stacknowa\\_academy\\_grand\\_bot)\n` +
             `⏱ **Vaqt:** ${new Date().toLocaleString("uz-UZ", { timeZone: "Asia/Tashkent" })}`;
 
           await sendGrantNotification(failAdminMsg, userId);

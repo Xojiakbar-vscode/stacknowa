@@ -162,25 +162,6 @@ const initGrantBot = () => {
   const bot = new Telegraf(token);
   grantBotInstance = bot;
 
-  // Auto-sync exam config and 10 questions into DB right on backend startup
-  getExamConfig();
-
-  // User Session map: userId -> { step, fullName, phone, username, currentQIndex, score, questions, userId }
-  const userSessions = new Map();
-  // Poll map: pollId -> { userId, qIndex, correctOptionId, points }
-  const pollSessions = new Map();
-
-  const getSession = (userId) => {
-    if (!userSessions.has(userId)) {
-      userSessions.set(userId, { currentQIndex: 0, score: 0, userId: userId });
-    }
-    return userSessions.get(userId);
-  };
-
-  const clearSession = (userId) => {
-    userSessions.delete(userId);
-  };
-
   // Ensure exam config exists in database (fetches dynamically from DB & seeds real questions ONCE if DB empty)
   const getExamConfig = async () => {
     try {
@@ -211,6 +192,9 @@ const initGrantBot = () => {
       return null;
     }
   };
+
+  // Auto-sync exam config and 10 questions into DB right on backend startup
+  getExamConfig();
 
   // Safe Callback Query answer helper
   const safeAnswerCb = async (ctx) => {

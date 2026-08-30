@@ -12,10 +12,31 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// 1. CORS Configuration (Enable full cross-origin requests for Vercel admin and frontend)
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+    credentials: true,
+  })
+);
+app.options("*", cors());
+
+// Custom Fallback CORS Headers Middleware
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors({ origin: "*" }));
 
 // API Routes
 app.use("/api/v1/auth", require("./routes/auth.routes"));
@@ -43,6 +64,15 @@ app.get("/", (req, res) => {
 
 // Setup Swagger Docs
 setupSwagger(app);
+
+// Global Error Handler Middleware ensuring CORS headers are always sent
+app.use((err, req, res, next) => {
+  console.error("API Xatosi:", err);
+  res.header("Access-Control-Allow-Origin", "*");
+  res.status(err.status || 500).json({
+    message: err.message || "Serverda ichki xatolik yuz berdi",
+  });
+});
 
 // Sync Database (alter table columns if updated), Init Default Admin & Start Server
 sequelize
